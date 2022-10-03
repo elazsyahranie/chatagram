@@ -1,5 +1,6 @@
 const express = require("express");
 const Route = express.Router();
+const { authentication } = require("../../middleware/auth");
 
 const {
   variables: {
@@ -19,7 +20,11 @@ const {
 
 Route.get(`${project}${user}${getAllUsers}`, getAllUsersController);
 Route.get(`${project}${user}${getUserById}`, getUserByIdController);
-Route.patch(`${project}${user}${updateUser}`, updateUserController);
+Route.patch(
+  `${project}${user}${updateUser}`,
+  authentication,
+  updateUserController
+);
 Route.delete(`${project}${user}${deleteUser}`, deleteUserController);
 
 module.exports = Route;

@@ -6,7 +6,7 @@ const variables = {
       user: "/user",
       getAllUsers: "/get-all-users",
       getUserById: "/get-user-by-id/:id",
-      updateUser: "/update-user/:id",
+      updateUser: "/update-user",
       deleteUser: "/delete-user/:id",
     },
   },
@@ -14,6 +14,9 @@ const variables = {
     authQuery: {
       register: "INSERT INTO user SET ?",
       getUserByCondition: "SELECT * FROM user WHERE ?",
+    },
+    userQuery: {
+      getAllUsers: "SELECT * FROM user",
     },
   },
 };

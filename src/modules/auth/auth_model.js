@@ -24,11 +24,4 @@ module.exports = {
       });
     });
   },
-  getUserByCondition: (condition) => {
-    return new Promise((resolve, reject) => {
-      connection.query(getUserByCondition, condition, (error, result) => {
-        !error ? resolve(result) : reject(new Error(error));
-      });
-    });
-  },
 };

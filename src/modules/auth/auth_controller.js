@@ -1,5 +1,8 @@
 const helper = require("../../helpers/wrapper");
+
 const authModel = require("./auth_model");
+const userModel = require("../user/user_model");
+
 const bcrypt = require("bcrypt");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
@@ -13,23 +16,39 @@ module.exports = {
         req.body;
       const salt = bcrypt.genSaltSync(10);
       const encryptPassword = bcrypt.hashSync(user_password, salt);
-      const setData = {
-        user_name: user_name,
-        user_email: user_email,
-        user_password: encryptPassword,
-        user_phone: user_phone,
-        user_bio: user_bio,
-      };
 
-      const checkEmailUser = await authModel.getUserByCondition({
-        user_email: user_email,
-      });
+      const whitespaceFinder = /\s/;
+      const checkWhitespace = whitespaceFinder.test(user_name);
 
-      if (checkEmailUser.length === 0) {
-        const result = await authModel.register(setData);
-        return helper.response(res, 200, "Registration succesful", result);
+      if (checkWhitespace) {
+        return helper.response(res, 400, "Username should not contain spacing");
       } else {
-        return helper.response(res, 400, "Email already registered");
+        const setData = {
+          user_name: user_name,
+          user_email: user_email,
+          user_password: encryptPassword,
+          user_phone: user_phone,
+          user_bio: user_bio,
+        };
+
+        const checkEmailUser = await userModel.getUserByCondition({
+          user_email: user_email,
+        });
+
+        const checkUsername = await userModel.getUserByCondition({
+          user_name: user_name,
+        });
+
+        if (checkEmailUser.length === 0 && checkUsername.length === 0) {
+          const result = await authModel.register(setData);
+          return helper.response(res, 200, "Registration succesful", result);
+        } else if (checkEmailUser.length > 0 && checkUsername.length === 0) {
+          return helper.response(res, 400, "Email already registered");
+        } else if (checkEmailUser.length === 0 && checkUsername.length > 0) {
+          return helper.response(res, 400, "Username already used");
+        } else if (checkEmailUser.length > 0 && checkUsername.length > 0) {
+          return helper.response(res, 400, "Email and username already used");
+        }
       }
     } catch (error) {
       console.log(error);
@@ -39,20 +58,36 @@ module.exports = {
   loginController: async (req, res) => {
     try {
       // console.log(req.body)
-      const { user_email, user_password } = req.body;
-      const checkUserEmail = await authModel.getUserByCondition({
-        user_email: user_email,
+      const { user_email_or_name, user_password } = req.body;
+      const checkUserEmail = await userModel.getUserByCondition({
+        user_email: user_email_or_name,
       });
 
-      if (checkUserEmail.length > 0) {
+      const checkUsername = await userModel.getUserByCondition({
+        user_name: user_email_or_name,
+      });
+
+      // console.log(checkUserEmail);
+      // console.log(checkUsername);
+
+      if (checkUserEmail.length > 0 || checkUsername.length > 0) {
         const checkPassword = bcrypt.compareSync(
           user_password,
-          checkUserEmail[0].user_password
+          checkUserEmail.length > 0 && checkUsername.length === 0
+            ? checkUserEmail[0].user_password
+            : checkUserEmail.length === 0 && checkUsername.length > 0
+            ? checkUsername[0].user_password
+            : null
         );
 
         if (checkPassword) {
           console.log("User berhasil login");
-          const payload = checkUserEmail[0];
+          const payload =
+            checkUserEmail.length > 0 && checkUsername.length === 0
+              ? checkUserEmail[0]
+              : checkUserEmail.length === 0 && checkUsername.length > 0
+              ? checkUsername[0]
+              : null;
           delete payload.user_password;
           delete payload.user_pin;
           const token = jwt.sign({ ...payload }, process.env.PRIVATE_KEY, {
@@ -69,13 +104,21 @@ module.exports = {
           const result = { ...payload, token, refreshToken };
           return helper.response(res, 200, "Login succesful!", result);
         } else {
-          return helper.response(res, 400, "Password incorrect");
+          return helper.response(
+            res,
+            400,
+            "Incorrect username/email or password"
+          );
         }
-      } else {
-        return helper.response(res, 404, "Email not found! Please register!");
+      }
+      if (checkUserEmail.length === 0 && checkUsername.length === 0) {
+        return helper.response(
+          res,
+          400,
+          "Incorrect username/email or password"
+        );
       }
     } catch (error) {
-      console.log(error);
       return helper.response(res, 400, "Bad Request", error);
     }
   },
