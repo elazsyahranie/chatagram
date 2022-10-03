@@ -10,6 +10,12 @@ const variables = {
       deleteUser: "/delete-user/:id",
     },
   },
+  query: {
+    authQuery: {
+      register: "INSERT INTO user SET ?",
+      getUserByCondition: "SELECT * FROM user WHERE ?",
+    },
+  },
 };
 
 module.exports = { variables };
